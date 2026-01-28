@@ -294,50 +294,57 @@ jobs:
 
     - name: Build FIPS Module
       run: |
-        cd "$env:BUILD_DIR\openssl-$env:FIPS_VERSION"
+        cd "%BUILD_DIR%\openssl-%FIPS_VERSION%"
         
-        Write-Host "========================================" -ForegroundColor Cyan
-        Write-Host "BUILDING FIPS MODULE" -ForegroundColor Cyan
-        Write-Host "========================================" -ForegroundColor Cyan
-        Write-Host "Install target: $env:FINAL_OPENSSLDIR" -ForegroundColor Yellow
-        Write-Host "Runtime paths: $env:FINAL_PREFIX" -ForegroundColor Yellow
-        Write-Host ""
+        echo ========================================
+        echo BUILDING FIPS MODULE
+        echo ========================================
+        echo Install prefix: %ProgramW6432%\OpenSSL
+        echo.
         
-        # Configure with staging directory as install prefix
-        # prefix = where to install during build
-        # The binary will still reference FINAL_PREFIX for runtime
-        perl Configure VC-WIN64A enable-fips --release no-shared no-legacy --prefix="$env:FINAL_PREFIX" --openssldir="$env:FINAL_OPENSSLDIR" -DPEDANTIC
+        REM Configure with final installation path
+        REM This ensures binaries look for files in the correct location at runtime
+        perl Configure VC-WIN64A enable-fips --release no-shared no-legacy --prefix="%ProgramW6432%\OpenSSL" --openssldir="%ProgramW6432%\OpenSSL"
         
         nmake build_sw
-        nmake test
-        nmake install_fips
+        if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
         
-        Write-Host "✅ FIPS module built and installed directory" -ForegroundColor Green
+        nmake test
+        if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+        
+        nmake install_fips
+        if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+        
+        echo FIPS module built successfully
       shell: cmd
 
     - name: Build OpenSSL with FIPS
       run: |
-        cd "$env:BUILD_DIR\openssl-$env:OPENSSL_VERSION"
+        cd "%BUILD_DIR%\openssl-%OPENSSL_VERSION%"
         
-        Write-Host "========================================" -ForegroundColor Cyan
-        Write-Host "BUILDING OPENSSL WITH FIPS" -ForegroundColor Cyan
-        Write-Host "========================================" -ForegroundColor Cyan
-        Write-Host "Install target: $env:FINAL_OPENSSLDIR" -ForegroundColor Yellow
-        Write-Host ""
+        echo ========================================
+        echo BUILDING OPENSSL WITH FIPS
+        echo ========================================
+        echo Install prefix: %ProgramW6432%\OpenSSL
+        echo.
         
-        # Configure with staging directory as install prefix
-        perl Configure VC-WIN64A enable-fips --release no-shared no-legacy --prefix="$env:FINAL_PREFIX" --openssldir="$env:FINAL_OPENSSLDIR" -DPEDANTIC
+        REM Configure with final installation path
+        perl Configure VC-WIN64A enable-fips --release no-shared no-legacy --prefix="%ProgramW6432%\OpenSSL" --openssldir="%ProgramW6432%\OpenSSL"
         
         nmake build_sw
+        if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
         
-        # Copy FIPS module from previous build (already installed to final dir)
-        copy "$env:FINAL_OPENSSLDIR\lib\ossl-modules\fips.dll" providers\
-        copy "$env:FINAL_OPENSSLDIR\fipsmodule.cnf" providers\
+        REM Copy FIPS module from Program Files (already built)
+        copy "C:\Program Files\OpenSSL\lib\ossl-modules\fips.dll" providers\
+        copy "C:\Program Files\OpenSSL\fipsmodule.cnf" providers\
         
         nmake test
-        nmake install_runtime
+        if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
         
-        Write-Host "✅ OpenSSL built and installed" -ForegroundColor Green
+        nmake install_runtime
+        if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+        
+        echo OpenSSL built successfully
       shell: cmd
 
 
