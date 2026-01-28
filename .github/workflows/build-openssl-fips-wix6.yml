@@ -54,10 +54,10 @@ jobs:
       with:
         arch: x64
 
-    - name: Install .NET 9 SDK (for WiX 6)
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '9.0.x'
+#    - name: Install .NET 9 SDK (for WiX 6)
+#      uses: actions/setup-dotnet@v4
+#      with:
+#        dotnet-version: '9.0.x'
 
     - name: Install WiX Toolset 6
       run: |
@@ -97,8 +97,8 @@ jobs:
         Write-Host "`nWiX:"
         wix --version
         
-        Write-Host "`nMSBuild:"
-        msbuild -version | Select-Object -First 2
+#        Write-Host "`nMSBuild:"
+#        msbuild -version | Select-Object -First 2
       shell: powershell
 
     - name: Create build, staging and install directories
