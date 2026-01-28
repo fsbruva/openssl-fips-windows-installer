@@ -1,0 +1,7 @@
+﻿<Project Sdk="WixToolset.Sdk/6.0.0">
+  <ItemGroup>
+    <None Include=".github\workflows\build-openssl-fips-wix6.yml" />
+    <None Include="openssl.cnf" />
+    <None Include="OpenSSL_Start.bat" />
+  </ItemGroup>
+</Project>

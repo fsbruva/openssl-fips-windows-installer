@@ -1,0 +1,65 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Fragment>
+	  <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+		  <Component Id="INSTALLFOLDER" Guid="DE1B3FCE-4BA2-4379-A092-4E6AC846ED38">
+			  <RemoveFolder Id="INSTALLFOLDER" On="uninstall" />
+			  <RegistryValue Root="HKCU"
+							 Key="Software\OpenSSL.org\OpenSSL"
+							 Name="FolderComponent"
+							 Type="string" Value="" />
+		  </Component>
+
+		  <Component Id="OpensslCnf" Guid="FA1803BF-2E61-425C-875E-F48170C66665">
+			  <File Id="oConf" Name="openssl.cnf" Source="C:\mount\OpenSSL_FIPS\openssl.cnf" />
+		  </Component>
+
+		  <Component Id="FipsModuleCnf" Guid="8B62B2F7-B0A0-42AE-9C0D-4761255E8451">
+			  <File Id="fConf" Name="fipsmodule.CNF" Source="C:\mount\OpenSSL_FIPS\fipsmodule.cnf" />
+		  </Component>
+
+		  <Component Id="ShellWrapper" Guid="EAD69737-7977-4E4E-B511-089CF568FFDF">
+			  <File Id="BAT" Name="OpenSSL_Start.bat" Source="C:\mount\OpenSSL_FIPS\OpenSSL_Start.bat" />
+		  </Component>
+
+		  <Component Id="MainExecutable" Guid="B26AA781-3B21-4A69-925E-BA716F47AD53">
+			  <File Id="EXE" Name="openssl.exe" Source="C:\mount\OpenSSL_FIPS\openssl.exe" />
+		  </Component>
+	  </ComponentGroup>
+
+	  <ComponentGroup Id="ProductModules" Directory="OSSLModulesFolder">
+		  <Component Id="FipsModule" Guid="13E07CC8-19BA-4401-9C3A-2950A61DBE29">
+			  <File Id="FipsDLL" Name="fips.dll" Source="C:\mount\OpenSSL_FIPS\lib\ossl-modules\fips.dll" />
+		  </Component>
+	  </ComponentGroup>
+
+	  <ComponentGroup Id="ProgramMenuComponents" Directory="ProgramMenuDir">
+		  <Component Id="ProgramMenuDir" Guid="61A42E38-0C12-40C6-9034-48E4348E40D6">
+			  <RemoveFolder Id="ProgramMenuDir" On="uninstall" />
+			  <RegistryValue Root="HKCU"
+							 Key="Software\OpenSSL.org\OpenSSL"
+							 Name="MenuFolder"
+							 Type="string" Value="" />
+		  </Component>
+
+		  <Component Id="ApplicationShortcut" Guid="996CEC72-89C4-456E-B9E0-18BB586B7087">
+			  <Shortcut Id="ApplicationStartMenuShortcutCMD"
+						Name="OpenSSL CMD Prompt"
+						Target="[SystemFolder]CMD.exe"
+						Arguments="/k &quot;[INSTALLFOLDER]OpenSSL_Start.bat&quot;"
+						WorkingDirectory="INSTALLFOLDER" />
+
+			  <Shortcut Id="ApplicationStartMenuShortcutPS"
+						Name="OpenSSL PS Prompt"
+						Target="[SystemFolder]WindowsPowerShell\v1.0\powershell.exe"
+						Arguments="-NoExit -Command &quot;&amp; {.\OpenSSL_Start.bat}&quot;"
+						WorkingDirectory="INSTALLFOLDER" />
+
+			  <RegistryValue Root="HKCU"
+							 Key="Software\OpenSSL.org\OpenSSL"
+							 Name="installed"
+							 Type="integer"
+							 Value="1" />
+		  </Component>
+	  </ComponentGroup>
+  </Fragment>
+</Wix>

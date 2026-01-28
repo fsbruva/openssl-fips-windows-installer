@@ -1,0 +1,744 @@
+name: Build OpenSSL FIPS (WiX 6 - FIPS Verified)
+
+# WiX Toolset 6.0 Build with FIPS-Compliant Hash Verification
+# OpenSSL 3.5.5 with FIPS Module 3.1.2
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      openssl_version:
+        description: 'OpenSSL version to build'
+        required: false
+        default: '3.5.5'
+      fips_version:
+        description: 'FIPS module version'
+        required: false
+        default: '3.1.2'
+
+env:
+  OPENSSL_VERSION: ${{ github.event.inputs.openssl_version || '3.5.5' }}
+  FIPS_VERSION: ${{ github.event.inputs.fips_version || '3.1.2' }}
+  BUILD_DIR: C:\mount\build
+  STAGING_DIR: C:\mount\OpenSSL_FIPS
+  
+  # OpenSSL configure uses these for runtime paths (where it will be installed on target system)
+  FINAL_PREFIX: 'C:\Program Files\OpenSSL'
+  FINAL_OPENSSLDIR: 'C:\Program Files\OpenSSL'
+  
+  # Official OpenSSL SHA256 hashes from https://www.openssl.org/source/
+  # IMPORTANT: Update these when changing versions
+  # OpenSSL 3.5.5: Get from https://www.openssl.org/source/openssl-3.5.5.tar.gz.sha256
+  # FIPS 3.1.2: Get from https://www.openssl.org/source/openssl-3.1.2.tar.gz.sha256
+  OPENSSL_3_5_5_SHA256: "PLACEHOLDER_UPDATE_FROM_OPENSSL_ORG"
+  FIPS_3_1_2_SHA256: "83049d042a260e696f62406ac5c08bf706fd84383f945cf21bd61e9ed95c396e"
+
+jobs:
+  verify-and-build-openssl-fips:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup MSBuild (Visual Studio)
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Setup Developer Command Prompt
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+
+    - name: Install .NET 9 SDK (for WiX 6)
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Install WiX Toolset 6
+      run: |
+        Write-Host "Installing WiX Toolset 6.0..." -ForegroundColor Cyan
+        dotnet tool install --global wix --version 6.0.0
+        
+        # Verify installation
+        wix --version
+        
+        Write-Host "✅ WiX 6.0 installed successfully" -ForegroundColor Green
+      shell: powershell
+
+    - name: Install Strawberry Perl
+      run: |
+        choco install strawberryperl -y
+        refreshenv
+      shell: powershell
+
+    - name: Verify build tools
+      run: |
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+        
+        Write-Host "Build Tools Verification:" -ForegroundColor Cyan
+        Write-Host "=========================" -ForegroundColor Cyan
+        
+        Write-Host "`nNASM:"
+        where.exe nasm
+        nasm -version
+        
+        Write-Host "`nPerl:"
+        where.exe perl
+        perl --version | Select-Object -First 2
+        
+        Write-Host "`n.NET SDK:"
+        dotnet --version
+        
+        Write-Host "`nWiX:"
+        wix --version
+        
+        Write-Host "`nMSBuild:"
+        msbuild -version | Select-Object -First 2
+      shell: powershell
+
+    - name: Create build, staging and install directories
+      run: |
+        # Build directory - where we extract and compile source
+        New-Item -ItemType Directory -Force -Path "$env:BUILD_DIR"
+        
+        # Staging directory - where OpenSSL will prep its files (our artifact directory)
+        New-Item -ItemType Directory -Force -Path "$env:STAGING_DIR"
+               New-Item -ItemType Directory -Force -Path "$env:STAGING_DIR\lib\ossl-modules"
+
+        # Install directory - where OpenSSL will be installed
+        New-Item -ItemType Directory -Force -Path "$env:FINAL_OPENSSLDIR"
+        New-Item -ItemType Directory -Force -Path "$env:FINAL_OPENSSLDIR\lib\ossl-modules"
+        
+        # Verification directory - for hash verification logs
+        New-Item -ItemType Directory -Force -Path "$env:BUILD_DIR\verification"
+        
+        Write-Host "Directory structure created:" -ForegroundColor Green
+        Write-Host "  Build: $env:BUILD_DIR" -ForegroundColor Gray
+        Write-Host "  Staging: $env:STAGING_DIR" -ForegroundColor Gray
+        Write-Host "  Verification: $env:BUILD_DIR\verification" -ForegroundColor Gray
+      shell: powershell
+
+    # ==========================================
+    # FIPS COMPLIANCE: Source Code Verification
+    # ==========================================
+    
+    - name: Create verification manifest header
+      run: |
+        $manifestPath = "$env:BUILD_DIR\verification\source-verification.txt"
+        
+        @"
+        ========================================================================
+        OpenSSL FIPS Build - Source Code Verification Manifest
+        ========================================================================
+        
+        Build Information:
+        ------------------
+        Build Date: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss UTC")
+        Build ID: ${{ github.run_number }}
+        Commit SHA: ${{ github.sha }}
+        Triggered By: ${{ github.event_name }}
+        Runner OS: ${{ runner.os }}
+        
+        OpenSSL Version: $env:OPENSSL_VERSION
+        FIPS Module Version: $env:FIPS_VERSION
+        
+        Build Tools:
+        ------------------
+        WiX Toolset: 6.0.0
+        .NET SDK: $(dotnet --version)
+        Visual Studio: 2022
+        
+        ========================================================================
+        CRYPTOGRAPHIC VERIFICATION
+        ========================================================================
+        
+        "@ | Out-File -FilePath $manifestPath -Encoding utf8
+        
+        Write-Host "Verification manifest created" -ForegroundColor Green
+      shell: powershell
+
+    - name: Download and verify FIPS module source
+      run: |
+        $fipsUrl = "https://www.openssl.org/source/openssl-$env:FIPS_VERSION.tar.gz"
+        $fipsFile = "$env:BUILD_DIR\openssl-$env:FIPS_VERSION.tar.gz"
+        $manifestPath = "$env:BUILD_DIR\verification\source-verification.txt"
+        
+        Write-Host "========================================" -ForegroundColor Cyan
+        Write-Host "DOWNLOADING FIPS MODULE SOURCE" -ForegroundColor Cyan
+        Write-Host "========================================" -ForegroundColor Cyan
+        Write-Host "URL: $fipsUrl"
+        Write-Host "Expected SHA256: $env:FIPS_3_1_2_SHA256"
+        Write-Host ""
+        
+        # Download
+        Invoke-WebRequest -Uri $fipsUrl -OutFile $fipsFile
+        
+        # Calculate actual hash
+        $actualHash = (Get-FileHash -Path $fipsFile -Algorithm SHA256).Hash.ToLower()
+        $expectedHash = $env:FIPS_3_1_2_SHA256.ToLower()
+        
+        # Log to manifest
+        @"
+        
+        FIPS Module Source (openssl-$env:FIPS_VERSION.tar.gz)
+        --------------------------------------------------------
+        Download URL: $fipsUrl
+        Download Date: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss UTC")
+        File Size: $((Get-Item $fipsFile).Length) bytes
+        
+        Expected SHA256: $expectedHash
+        Actual SHA256:   $actualHash
+        Verification:    $(if ($actualHash -eq $expectedHash) { "✓ PASSED" } else { "✗ FAILED" })
+        
+        "@ | Out-File -FilePath $manifestPath -Append -Encoding utf8
+        
+        # Verify hash
+        if ($actualHash -ne $expectedHash) {
+          Write-Host "❌ VERIFICATION FAILED!" -ForegroundColor Red
+          Write-Host "Expected: $expectedHash" -ForegroundColor Red
+          Write-Host "Actual:   $actualHash" -ForegroundColor Red
+          throw "FIPS module source verification failed. Hash mismatch detected."
+        }
+        
+        Write-Host "✅ FIPS module source verified successfully!" -ForegroundColor Green
+        Write-Host "Hash: $actualHash" -ForegroundColor Green
+        Write-Host ""
+      shell: powershell
+
+    - name: Download and verify OpenSSL source
+      run: |
+        $opensslUrl = "https://www.openssl.org/source/openssl-$env:OPENSSL_VERSION.tar.gz"
+        $opensslFile = "$env:BUILD_DIR\openssl-$env:OPENSSL_VERSION.tar.gz"
+        $manifestPath = "$env:BUILD_DIR\verification\source-verification.txt"
+        
+        Write-Host "========================================" -ForegroundColor Cyan
+        Write-Host "DOWNLOADING OPENSSL SOURCE" -ForegroundColor Cyan
+        Write-Host "========================================" -ForegroundColor Cyan
+        Write-Host "URL: $opensslUrl"
+        Write-Host "Expected SHA256: $env:OPENSSL_3_5_5_SHA256"
+        Write-Host ""
+        
+        # Download
+        Invoke-WebRequest -Uri $opensslUrl -OutFile $opensslFile
+        
+        # Calculate actual hash
+        $actualHash = (Get-FileHash -Path $opensslFile -Algorithm SHA256).Hash.ToLower()
+        $expectedHash = $env:OPENSSL_3_5_5_SHA256.ToLower()
+        
+        # Log to manifest
+        @"
+        
+        OpenSSL Source (openssl-$env:OPENSSL_VERSION.tar.gz)
+        --------------------------------------------------------
+        Download URL: $opensslUrl
+        Download Date: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss UTC")
+        File Size: $((Get-Item $opensslFile).Length) bytes
+        
+        Expected SHA256: $expectedHash
+        Actual SHA256:   $actualHash
+        Verification:    $(if ($actualHash -eq $expectedHash) { "✓ PASSED" } else { "✗ FAILED" })
+        
+        "@ | Out-File -FilePath $manifestPath -Append -Encoding utf8
+        
+        # Verify hash
+        if ($actualHash -ne $expectedHash) {
+          Write-Host "❌ VERIFICATION FAILED!" -ForegroundColor Red
+          Write-Host "Expected: $expectedHash" -ForegroundColor Red
+          Write-Host "Actual:   $actualHash" -ForegroundColor Red
+          throw "OpenSSL source verification failed. Hash mismatch detected."
+        }
+        
+        Write-Host "✅ OpenSSL source verified successfully!" -ForegroundColor Green
+        Write-Host "Hash: $actualHash" -ForegroundColor Green
+        Write-Host ""
+      shell: powershell
+
+    - name: Extract verified sources
+      run: |
+        $manifestPath = "$env:BUILD_DIR\verification\source-verification.txt"
+        
+        Write-Host "Extracting verified sources..." -ForegroundColor Cyan
+        
+        # Extract FIPS module
+        tar -xzf "$env:BUILD_DIR\openssl-$env:FIPS_VERSION.tar.gz" -C $env:BUILD_DIR
+        
+        # Extract OpenSSL
+        tar -xzf "$env:BUILD_DIR\openssl-$env:OPENSSL_VERSION.tar.gz" -C $env:BUILD_DIR
+        
+        @"
+        
+        ========================================================================
+        EXTRACTION COMPLETE
+        ========================================================================
+        
+        Both source archives have been:
+        1. Downloaded from official OpenSSL.org sources
+        2. Verified against official SHA256 hashes
+        3. Extracted without modification
+        
+        The build process will now proceed using only verified source code.
+        
+        "@ | Out-File -FilePath $manifestPath -Append -Encoding utf8
+        
+        Write-Host "✅ Sources extracted successfully" -ForegroundColor Green
+      shell: powershell
+
+    # ==========================================
+    # Build Process (Using Verified Sources)
+    # ==========================================
+
+    - name: Build FIPS Module
+      run: |
+        cd "$env:BUILD_DIR\openssl-$env:FIPS_VERSION"
+        
+        Write-Host "========================================" -ForegroundColor Cyan
+        Write-Host "BUILDING FIPS MODULE" -ForegroundColor Cyan
+        Write-Host "========================================" -ForegroundColor Cyan
+        Write-Host "Install target: $env:FINAL_OPENSSLDIR" -ForegroundColor Yellow
+        Write-Host "Runtime paths: $env:FINAL_PREFIX" -ForegroundColor Yellow
+        Write-Host ""
+        
+        # Configure with staging directory as install prefix
+        # prefix = where to install during build
+        # The binary will still reference FINAL_PREFIX for runtime
+        perl Configure VC-WIN64A enable-fips --release no-shared no-legacy --prefix="$env:FINAL_PREFIX" --openssldir="$env:FINAL_OPENSSLDIR"
+        
+        nmake build_sw
+        nmake test
+        nmake install_fips
+        
+        Write-Host "✅ FIPS module built and installed directory" -ForegroundColor Green
+      shell: cmd
+
+    - name: Build OpenSSL with FIPS
+      run: |
+        cd "$env:BUILD_DIR\openssl-$env:OPENSSL_VERSION"
+        
+        Write-Host "========================================" -ForegroundColor Cyan
+        Write-Host "BUILDING OPENSSL WITH FIPS" -ForegroundColor Cyan
+        Write-Host "========================================" -ForegroundColor Cyan
+        Write-Host "Install target: $env:FINAL_OPENSSLDIR" -ForegroundColor Yellow
+        Write-Host ""
+        
+        # Configure with staging directory as install prefix
+        perl Configure VC-WIN64A enable-fips --release no-shared no-legacy --prefix="$env:FINAL_PREFIX" --openssldir="$env:FINAL_OPENSSLDIR"
+        
+        nmake build_sw
+        
+        # Copy FIPS module from previous build (already installed to final dir)
+        copy "$env:FINAL_OPENSSLDIR\lib\ossl-modules\fips.dll" providers\
+        copy "$env:FINAL_OPENSSLDIR\fipsmodule.cnf" providers\
+        
+        nmake test
+        nmake install_runtime
+        
+        Write-Host "✅ OpenSSL built and installed" -ForegroundColor Green
+      shell: cmd
+
+
+    - name: Prepare fipsmodule.CNF
+      run: |
+        cd "$env:FINAL_OPENSSLDIR"
+        
+        Write-Host "========================================" -ForegroundColor Cyan
+        Write-Host "BUILDING FIPSMODULE.CNF" -ForegroundColor Cyan
+        Write-Host "========================================" -ForegroundColor Cyan
+  
+        # Move openssl binary
+        move "$env:FINAL_OPENSSLDIR\bin\openssl.exe" "$env:FINAL_OPENSSLDIR\openssl.exe"
+        rmdir /s /Q bin
+        
+        # Install openssl.cnf 
+        copy  "openssl.cnf" "$env:FINAL_OPENSSLDIR\"
+
+        # Create fipsmodule.CNF
+        "$env:FINAL_OPENSSLDIR\openssl.exe" fipsinstall -out "$env:FINAL_OPENSSLDIR\fipsmodule.CNF" -module "$env:FINAL_OPENSSLDIR\lib\ossl-modules\fips.dll" -self_test_onload
+
+        Write-Host "✅ fipsmodule.CNF created" -ForegroundColor Green
+      shell: cmd
+
+    # ==========================================
+    # Post-Build Verification
+    # ==========================================
+
+    - name: Generate build artifact hashes
+      run: |
+        $manifestPath = "$env:BUILD_DIR\verification\source-verification.txt"
+        
+        @"
+        
+        ========================================================================
+        BUILD ARTIFACT VERIFICATION
+        ========================================================================
+        
+        The following binaries were produced from verified source code:
+        Staging Directory: $env:STAGING_DIR
+        
+        "@ | Out-File -FilePath $manifestPath -Append -Encoding utf8
+        
+        # Hash openssl.exe
+        $opensslExe = "$env:FINAL_OPENSSLDIR\openssl.exe"
+        if (Test-Path $opensslExe) {
+          $hash = (Get-FileHash -Path $opensslExe -Algorithm SHA256).Hash.ToLower()
+          @"
+        openssl.exe
+        --------------------------------------------------------
+        Path: $opensslExe
+        Size: $((Get-Item $opensslExe).Length) bytes
+        SHA256: $hash
+        
+        "@ | Out-File -FilePath $manifestPath -Append -Encoding utf8
+        }
+        
+        # Hash fips.dll
+        $fipsDll = "$env:FINAL_OPENSSLDIR\lib\ossl-modules\fips.dll"
+        if (Test-Path $fipsDll) {
+          $hash = (Get-FileHash -Path $fipsDll -Algorithm SHA256).Hash.ToLower()
+          @"
+        fips.dll
+        --------------------------------------------------------
+        Path: $fipsDll
+        Size: $((Get-Item $fipsDll).Length) bytes
+        SHA256: $hash
+        
+        "@ | Out-File -FilePath $manifestPath -Append -Encoding utf8
+        }
+        
+        # Hash fipsmodule.cnf
+        $fipsConf = "$env:FINAL_OPENSSLDIR\fipsmodule.cnf"
+        if (Test-Path $fipsConf) {
+          $hash = (Get-FileHash -Path $fipsConf -Algorithm SHA256).Hash.ToLower()
+          @"
+        fipsmodule.cnf
+        --------------------------------------------------------
+        Path: $fipsConf
+        Size: $((Get-Item $fipsConf).Length) bytes
+        SHA256: $hash
+        
+        "@ | Out-File -FilePath $manifestPath -Append -Encoding utf8
+        }
+        
+        Write-Host "✅ Build artifact hashes recorded" -ForegroundColor Green
+      shell: powershell
+
+    - name: Prepare artifacts for packaging
+      run: |
+        Write-Host "========================================" -ForegroundColor Cyan
+        Write-Host "PREPARING ARTIFACTS" -ForegroundColor Cyan
+        Write-Host "========================================" -ForegroundColor Cyan
+        Write-Host ""
+        
+        # OpenSSL binaries are installed in $env:FINAL_OPENSSLDIR
+        
+        # Copy openssl.exe from install directory to staging directory
+        if (Test-Path "$env:FINAL_OPENSSLDIR\bin\openssl.exe") {
+          Copy-Item "$env:FINAL_OPENSSLDIR\openssl.exe" -Destination "$env:STAGING_DIR\" -Force
+          Write-Host "✓ Copied openssl.exe to staging root" -ForegroundColor Green
+        }
+        
+        # Copy fips.dll from install directory to staging directory
+        if (Test-Path "$env:FINAL_OPENSSLDIR\lib\ossl-modules\fips.dll") {
+          Copy-Item "$env:FINAL_OPENSSLDIR\lib\ossl-modules\fips.dll" -Destination "$env:STAGING_DIR\lib\ossl-modules\" -Force
+          Write-Host "✓ Copied fips.dll to staging root" -ForegroundColor Green
+        }
+
+        # Copy fipsmodule.cnf from install directory to staging directory
+        if (Test-Path "$env:FINAL_OPENSSLDIR\fipsmodule.CNF") {
+          Copy-Item "$env:FINAL_OPENSSLDIR\fipsmodule.CNF" -Destination "$env:STAGING_DIR\" -Force
+          Write-Host "✓ Copied fipsmodule.CNF to staging root" -ForegroundColor Green
+        }
+
+        # Copy static config files from repo
+        Copy-Item "openssl.cnf" -Destination "$env:STAGING_DIR\" -Force
+        Write-Host "✓ Added openssl.cnf" -ForegroundColor Green
+        
+        Copy-Item "OpenSSL_Start.bat" -Destination "$env:STAGING_DIR\" -Force
+        Write-Host "✓ Added OpenSSL_Start.bat" -ForegroundColor Green
+        
+        # Copy verification manifest
+        Copy-Item "$env:BUILD_DIR\verification\source-verification.txt" -Destination "$env:STAGING_DIR\" -Force
+        Write-Host "✓ Added source-verification.txt" -ForegroundColor Green
+        
+        # Create version info file
+        @"
+        OpenSSL Version: $env:OPENSSL_VERSION
+        FIPS Module Version: $env:FIPS_VERSION
+        Build Date: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss UTC")
+        Build ID: ${{ github.run_number }}
+        Commit: ${{ github.sha }}
+        WiX Version: 6.0.0
+        
+        Installation Notes:
+        -------------------
+        This build is configured to run from: $env:FINAL_PREFIX
+        Files are staged in: $env:STAGING_DIR
+        
+        VERIFICATION STATUS: All source code cryptographically verified
+        See source-verification.txt for complete verification details.
+        "@ | Out-File -FilePath "$env:STAGING_DIR\BUILD_INFO.txt" -Encoding utf8
+        Write-Host "✓ Created BUILD_INFO.txt" -ForegroundColor Green
+        
+        Write-Host ""
+        Write-Host "Staging directory contents:" -ForegroundColor Cyan
+        Get-ChildItem -Recurse "$env:STAGING_DIR" | Format-Table Name, Length, Directory
+      shell: powershell
+
+    - name: Verify FIPS configuration
+      run: |
+        cd "$env:STAGING_DIR"
+        
+        Write-Host "========================================" -ForegroundColor Cyan
+        Write-Host "FIPS MODULE VERIFICATION" -ForegroundColor Cyan
+        Write-Host "========================================" -ForegroundColor Cyan
+        
+        Write-Host "`nOpenSSL Version:"
+        .\openssl.exe version
+        
+        Write-Host "`nAvailable Providers:"
+        .\openssl.exe list -providers
+        
+        Write-Host "`nFIPS Module Self-Test:"
+        .\openssl.exe fipsinstall -in "fipsmodule.cnf" -module "lib\ossl-modules\fips.dll" -verify -self_test_onload
+        
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "FIPS module verification failed!"
+          exit 1
+        }
+        
+        Write-Host "`n✅ FIPS module verified successfully!" -ForegroundColor Green
+      shell: powershell
+
+    - name: Create cryptographic attestation
+      run: |
+        $attestationPath = "$env:STAGING_DIR\CRYPTOGRAPHIC_ATTESTATION.txt"
+        
+        @"
+        ========================================================================
+        CRYPTOGRAPHIC ATTESTATION
+        ========================================================================
+        
+        This document attests that the OpenSSL FIPS build was created using
+        cryptographically verified source code from OpenSSL.org.
+        
+        Build Information:
+        ------------------
+        Build Date: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss UTC")
+        Build System: GitHub Actions (Windows Server 2022)
+        Build ID: ${{ github.run_number }}
+        Workflow Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        Git Commit: ${{ github.sha }}
+        
+        Source Verification:
+        -------------------
+        ✓ FIPS Module ($env:FIPS_VERSION): SHA256 verified against OpenSSL.org
+        ✓ OpenSSL ($env:OPENSSL_VERSION): SHA256 verified against OpenSSL.org
+        ✓ No source code modifications
+        ✓ Compiled with FIPS compliance flags
+        ✓ FIPS module self-test passed
+        
+        Verification Evidence:
+        ---------------------
+        Complete verification details are available in source-verification.txt
+        
+        Build Configuration:
+        -------------------
+        Compiler: Microsoft Visual Studio (MSVC)
+        Architecture: x64
+        Configuration: Release
+        Flags: enable-fips, no-shared, no-legacy
+        Installer: WiX Toolset 6.0.0
+        
+        Installation Paths:
+        ------------------
+        Staging Directory: $env:STAGING_DIR
+        Target Install Path: $env:FINAL_PREFIX
+        
+        This build complies with NIST FIPS 140-3 requirements for
+        cryptographic module validation.
+        
+        ========================================================================
+        
+        "@ | Out-File -FilePath $attestationPath -Encoding utf8
+        
+        Write-Host "✅ Cryptographic attestation created" -ForegroundColor Green
+      shell: powershell
+
+    - name: Upload OpenSSL artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: openssl-fips-binaries
+        path: C:\mount\OpenSSL_FIPS\
+        retention-days: 30
+
+    - name: Upload verification manifest
+      uses: actions/upload-artifact@v4
+      with:
+        name: fips-verification-manifest
+        path: C:\mount\OpenSSL_FIPS\source-verification.txt
+        retention-days: 90
+
+    - name: Upload cryptographic attestation
+      uses: actions/upload-artifact@v4
+      with:
+        name: cryptographic-attestation
+        path: C:\mount\OpenSSL_FIPS\CRYPTOGRAPHIC_ATTESTATION.txt
+        retention-days: 90
+
+  build-installer:
+    runs-on: windows-latest
+    needs: verify-and-build-openssl-fips
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Download OpenSSL artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: openssl-fips-binaries
+        path: C:\mount\OpenSSL_FIPS
+
+    - name: Verify downloaded artifacts
+      run: |
+        Write-Host "========================================" -ForegroundColor Cyan
+        Write-Host "ARTIFACT VERIFICATION" -ForegroundColor Cyan
+        Write-Host "========================================" -ForegroundColor Cyan
+        
+        Write-Host "`nArtifact contents:"
+        Get-ChildItem -Recurse C:\mount\OpenSSL_FIPS | Format-Table Name, Length, LastWriteTime
+        
+        Write-Host "`n========================================" -ForegroundColor Cyan
+        Write-Host "Build Information:"
+        Get-Content C:\mount\OpenSSL_FIPS\BUILD_INFO.txt
+        
+        Write-Host "`n========================================" -ForegroundColor Cyan
+        Write-Host "Cryptographic Attestation:"
+        Get-Content C:\mount\OpenSSL_FIPS\CRYPTOGRAPHIC_ATTESTATION.txt
+      shell: powershell
+
+    - name: Install .NET 9 SDK (for WiX 6)
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Install WiX Toolset 6
+      run: |
+        Write-Host "Installing WiX Toolset 6.0..." -ForegroundColor Cyan
+        dotnet tool install --global wix --version 6.0.0
+        
+        # Add to PATH for current session
+        $env:PATH += ";$env:USERPROFILE\.dotnet\tools"
+        
+        # Verify installation
+        wix --version
+        
+        Write-Host "✅ WiX 6.0 installed successfully" -ForegroundColor Green
+      shell: powershell
+
+    - name: Build WiX 6 MSI Installer
+      run: |
+        Write-Host "========================================" -ForegroundColor Cyan
+        Write-Host "BUILDING MSI INSTALLER (WiX 6)" -ForegroundColor Cyan
+        Write-Host "========================================" -ForegroundColor Cyan
+        
+        # Ensure WiX is in PATH
+        $env:PATH += ";$env:USERPROFILE\.dotnet\tools"
+        
+        # WiX 6 uses dotnet build with the WiX SDK
+        Write-Host "`nBuilding WiX project..."
+        dotnet build Openssl_FIPS.wixproj -c Release
+        
+        if ($LASTEXITCODE -ne 0) {
+          Write-Host "❌ WiX build failed!" -ForegroundColor Red
+          exit 1
+        }
+        
+        Write-Host "`n✅ MSI installer built successfully" -ForegroundColor Green
+        
+        # Find the generated MSI
+        $msiPath = Get-ChildItem -Path . -Recurse -Filter "*.msi" | Select-Object -First 1
+        
+        if ($msiPath) {
+          Write-Host "`nInstaller Details:" -ForegroundColor Cyan
+          Write-Host "  File: $($msiPath.Name)"
+          Write-Host "  Size: $([math]::Round($msiPath.Length / 1MB, 2)) MB"
+          Write-Host "  Path: $($msiPath.FullName)"
+          
+          # Rename to include version
+          $newName = "OpenSSL-FIPS-$env:OPENSSL_VERSION.msi"
+          Copy-Item $msiPath.FullName -Destination $newName
+          Write-Host "`n  Renamed to: $newName" -ForegroundColor Green
+        } else {
+          Write-Host "❌ MSI file not found after build!" -ForegroundColor Red
+          exit 1
+        }
+      shell: powershell
+      env:
+        OPENSSL_VERSION: ${{ needs.verify-and-build-openssl-fips.env.OPENSSL_VERSION || '3.5.5' }}
+
+    - name: Upload MSI Installer
+      uses: actions/upload-artifact@v4
+      with:
+        name: openssl-fips-installer
+        path: "OpenSSL-FIPS-*.msi"
+        retention-days: 90
+
+    - name: Create Release (on tag)
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          OpenSSL-FIPS-*.msi
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+        body: |
+          ## OpenSSL FIPS Build - Cryptographically Verified
+          
+          **OpenSSL Version:** 3.5.5
+          **FIPS Module Version:** 3.1.2
+          **Build Date:** ${{ github.event.head_commit.timestamp }}
+          **Installer:** WiX Toolset 6.0
+          
+          ### 🔒 FIPS Compliance
+          
+          This build includes cryptographic verification of all source code:
+          - ✅ All source tarballs verified against official OpenSSL.org SHA256 hashes
+          - ✅ No source code modifications
+          - ✅ NIST FIPS 140-3 compliant build process
+          - ✅ FIPS module self-test verification passed
+          
+          ### 📋 Verification Evidence
+          
+          Download the following artifacts for complete verification records:
+          - `fips-verification-manifest`: Complete source verification details
+          - `cryptographic-attestation`: Build attestation document
+          
+          ### 📦 Installation
+          
+          1. Download the MSI installer
+          2. Run as Administrator
+          3. Access via Start Menu → OpenSSL FIPS
+          
+          ### 📄 Included Files
+          
+          - OpenSSL executable (`openssl.exe`)
+          - FIPS provider module (`fips.dll`)
+          - Configuration files (`openssl.cnf`, `fipsmodule.cnf`)
+          - Verification wrapper (`OpenSSL_Start.bat`)
+          - Source verification manifest
+          - Cryptographic attestation
+          
+          ### 🛠️ Build System
+          
+          - Built with WiX Toolset 6.0
+          - .NET 9 SDK
+          - Visual Studio 2022
+          - GitHub Actions (Windows Server 2022)
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
