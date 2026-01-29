@@ -294,17 +294,24 @@ jobs:
 
     - name: Build FIPS Module
       run: |
-        cd "%BUILD_DIR%\openssl-%FIPS_VERSION%"
+        cd /d "%BUILD_DIR%\openssl-%FIPS_VERSION%"
+        cd /d "%BUILD_DIR%\openssl-%FIPS_VERSION%"
+        if %ERRORLEVEL% NEQ 0 (
+          echo ERROR: Failed to change to FIPS source directory
+          exit /b 1
+        )        
         
         echo ========================================
         echo BUILDING FIPS MODULE
         echo ========================================
+        echo Current directory: %CD%
         echo Install prefix: %ProgramW6432%\OpenSSL
         echo.
         
         REM Configure with final installation path
         REM This ensures binaries look for files in the correct location at runtime
-        perl Configure VC-WIN64A enable-fips --release no-shared no-legacy --prefix="%ProgramW6432%\OpenSSL" --openssldir="%ProgramW6432%\OpenSSL"
+        perl Configure VC-WIN64A enable-fips --release no-shared no-legacy --prefix="%ProgramW6432%\OpenSSL" --openssldir="%ProgramW6432%\OpenSSL" -DPEDANTIC
+        if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
         
         nmake build_sw
         if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
@@ -320,24 +327,33 @@ jobs:
 
     - name: Build OpenSSL with FIPS
       run: |
-        cd "%BUILD_DIR%\openssl-%OPENSSL_VERSION%"
+        cd /d "%BUILD_DIR%\openssl-%OPENSSL_VERSION%"
+        if %ERRORLEVEL% NEQ 0 (
+          echo ERROR: Failed to change to OpenSSL source directory
+          exit /b 1
+        )
         
         echo ========================================
         echo BUILDING OPENSSL WITH FIPS
         echo ========================================
         echo Install prefix: %ProgramW6432%\OpenSSL
+        echo Current directory: %CD%
         echo.
         
         REM Configure with final installation path
-        perl Configure VC-WIN64A enable-fips --release no-shared no-legacy --prefix="%ProgramW6432%\OpenSSL" --openssldir="%ProgramW6432%\OpenSSL"
+        perl Configure VC-WIN64A enable-fips --release no-shared no-legacy --prefix="%ProgramW6432%\OpenSSL" --openssldir="%ProgramW6432%\OpenSSL" -DPEDANTIC
+        if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
         
         nmake build_sw
         if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
         
         REM Copy FIPS module from Program Files (already built)
         copy "C:\Program Files\OpenSSL\lib\ossl-modules\fips.dll" providers\
+        if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+
         copy "C:\Program Files\OpenSSL\fipsmodule.cnf" providers\
-        
+        if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+
         nmake test
         if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
         
@@ -348,26 +364,41 @@ jobs:
       shell: cmd
 
 
-    - name: Prepare fipsmodule.CNF
+    - name: if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
       run: |
-        cd "$env:FINAL_OPENSSLDIR"
         
         Write-Host "========================================" -ForegroundColor Cyan
-        Write-Host "BUILDING FIPSMODULE.CNF" -ForegroundColor Cyan
+        Write-Host "GENERATING FIPS MODULE HMAC" -ForegroundColor Cyan
         Write-Host "========================================" -ForegroundColor Cyan
   
         # Move openssl binary
-        move "$env:FINAL_OPENSSLDIR\bin\openssl.exe" "$env:FINAL_OPENSSLDIR\openssl.exe"
-        rmdir /s /Q bin
+        Move-Item "$env:FINAL_OPENSSLDIR\bin\openssl.exe" "$env:FINAL_OPENSSLDIR\openssl.exe" -Force
+        Write-Host "Moved openssl.exe to root directory" -ForegroundColor Green
+        # Remove empty bin directory
+        Remove-Item "C:\Program Files\OpenSSL\bin" -Force -ErrorAction SilentlyContinue
         
-        # Install openssl.cnf 
-        copy  "openssl.cnf" "$env:FINAL_OPENSSLDIR\"
+        # Copy openssl.cnf from repository
+        Copy-Item "openssl.cnf" "$env:FINAL_OPENSSLDIR\" -Force
+        Write-Host "Installed openssl.cnf" -ForegroundColor Green
 
-        # Create fipsmodule.CNF
-        "$env:FINAL_OPENSSLDIR\openssl.exe" fipsinstall -out "$env:FINAL_OPENSSLDIR\fipsmodule.CNF" -module "$env:FINAL_OPENSSLDIR\lib\ossl-modules\fips.dll" -self_test_onload
+        # Generate fipsmodule.cnf with HMAC
+        Write-Host "`nGenerating FIPS module configuration with HMAC..." -ForegroundColor Cyan
+        & "C:\Program Files\OpenSSL\openssl.exe" fipsinstall `
+          -out "C:\Program Files\OpenSSL\fipsmodule.cnf" `
+          -module "C:\Program Files\OpenSSL\lib\ossl-modules\fips.dll" `
+          -self_test_onload
 
-        Write-Host "✅ fipsmodule.CNF created" -ForegroundColor Green
-      shell: cmd
+        if ($LASTEXITCODE -ne 0) {
+          Write-Host "FIPS module configuration generation failed!" -ForegroundColor Red
+          exit 1
+        }
+
+        Write-Host "FIPS module HMAC generated successfully" -ForegroundColor Green
+
+        # Verify the HMAC was added
+        Write-Host "`nVerifying fipsmodule.cnf contains HMAC:" -ForegroundColor Cyan
+        Get-Content "C:\Program Files\OpenSSL\fipsmodule.cnf" | Select-String "install-mac"
+      shell: powershell
 
     # ==========================================
     # Post-Build Verification
