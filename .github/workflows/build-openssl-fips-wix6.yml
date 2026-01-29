@@ -9,6 +9,16 @@ on:
       - 'v*'
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      openssl_version:
+        description: 'OpenSSL version to build'
+        required: false
+        default: '3.5.5'
+      fips_version:
+        description: 'FIPS module version'
+        required: false
+        default: '3.1.2'
 
 env:
   # Official OpenSSL SHA256 hashes from https://www.openssl.org/source/
