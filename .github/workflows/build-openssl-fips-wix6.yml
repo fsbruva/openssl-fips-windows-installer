@@ -53,12 +53,7 @@ jobs:
       uses: ilammy/msvc-dev-cmd@v1
       with:
         arch: x64
-
-#    - name: Install .NET 9 SDK (for WiX 6)
-#      uses: actions/setup-dotnet@v4
-#      with:
-#        dotnet-version: '9.0.x'
-
+        
     - name: Install WiX Toolset 6
       run: |
         Write-Host "Installing WiX Toolset 6.0..." -ForegroundColor Cyan
@@ -67,14 +62,14 @@ jobs:
         # Verify installation
         wix --version
         
-        Write-Host "✅ WiX 6.0 installed successfully" -ForegroundColor Green
+        Write-Host "WiX 6.0 installed successfully" -ForegroundColor Green
       shell: powershell
 
-    - name: Install Strawberry Perl
-      run: |
-        choco install strawberryperl -y
-        refreshenv
-      shell: powershell
+#    - name: Install Strawberry Perl
+#      run: |
+#        choco install strawberryperl -y
+#        refreshenv
+#      shell: powershell
 
     - name: Verify build tools
       run: |
@@ -97,8 +92,6 @@ jobs:
         Write-Host "`nWiX:"
         wix --version
         
-#        Write-Host "`nMSBuild:"
-#        msbuild -version | Select-Object -First 2
       shell: powershell
 
     - name: Create build, staging and install directories
@@ -199,13 +192,13 @@ jobs:
         
         # Verify hash
         if ($actualHash -ne $expectedHash) {
-          Write-Host "❌ VERIFICATION FAILED!" -ForegroundColor Red
+          Write-Host "VERIFICATION FAILED!" -ForegroundColor Red
           Write-Host "Expected: $expectedHash" -ForegroundColor Red
           Write-Host "Actual:   $actualHash" -ForegroundColor Red
           throw "FIPS module source verification failed. Hash mismatch detected."
         }
         
-        Write-Host "✅ FIPS module source verified successfully!" -ForegroundColor Green
+        Write-Host "FIPS module source verified successfully!" -ForegroundColor Green
         Write-Host "Hash: $actualHash" -ForegroundColor Green
         Write-Host ""
       shell: powershell
@@ -247,13 +240,13 @@ jobs:
         
         # Verify hash
         if ($actualHash -ne $expectedHash) {
-          Write-Host "❌ VERIFICATION FAILED!" -ForegroundColor Red
+          Write-Host "VERIFICATION FAILED!" -ForegroundColor Red
           Write-Host "Expected: $expectedHash" -ForegroundColor Red
           Write-Host "Actual:   $actualHash" -ForegroundColor Red
           throw "OpenSSL source verification failed. Hash mismatch detected."
         }
         
-        Write-Host "✅ OpenSSL source verified successfully!" -ForegroundColor Green
+        Write-Host "OpenSSL source verified successfully!" -ForegroundColor Green
         Write-Host "Hash: $actualHash" -ForegroundColor Green
         Write-Host ""
       shell: powershell
@@ -285,7 +278,7 @@ jobs:
         
         "@ | Out-File -FilePath $manifestPath -Append -Encoding utf8
         
-        Write-Host "✅ Sources extracted successfully" -ForegroundColor Green
+        Write-Host "Sources extracted successfully" -ForegroundColor Green
       shell: powershell
 
     # ==========================================
@@ -364,7 +357,7 @@ jobs:
       shell: cmd
 
 
-    - name: if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+    - name: Generate FIPS module HMAC and finalize installation
       run: |
         
         Write-Host "========================================" -ForegroundColor Cyan
@@ -375,7 +368,7 @@ jobs:
         Move-Item "$env:FINAL_OPENSSLDIR\bin\openssl.exe" "$env:FINAL_OPENSSLDIR\openssl.exe" -Force
         Write-Host "Moved openssl.exe to root directory" -ForegroundColor Green
         # Remove empty bin directory
-        Remove-Item "C:\Program Files\OpenSSL\bin" -Force -ErrorAction SilentlyContinue
+        #Remove-Item "C:\Program Files\OpenSSL\bin" -Force -ErrorAction SilentlyContinue
         
         # Copy openssl.cnf from repository
         Copy-Item "openssl.cnf" "$env:FINAL_OPENSSLDIR\" -Force
@@ -383,9 +376,9 @@ jobs:
 
         # Generate fipsmodule.cnf with HMAC
         Write-Host "`nGenerating FIPS module configuration with HMAC..." -ForegroundColor Cyan
-        & "C:\Program Files\OpenSSL\openssl.exe" fipsinstall `
-          -out "C:\Program Files\OpenSSL\fipsmodule.cnf" `
-          -module "C:\Program Files\OpenSSL\lib\ossl-modules\fips.dll" `
+        & "$env:FINAL_OPENSSLDIR\openssl.exe" fipsinstall `
+          -out "$env:FINAL_OPENSSLDIR\fipsmodule.cnf" `
+          -module "$env:FINAL_OPENSSLDIR\lib\ossl-modules\fips.dll" `
           -self_test_onload
 
         if ($LASTEXITCODE -ne 0) {
@@ -397,7 +390,7 @@ jobs:
 
         # Verify the HMAC was added
         Write-Host "`nVerifying fipsmodule.cnf contains HMAC:" -ForegroundColor Cyan
-        Get-Content "C:\Program Files\OpenSSL\fipsmodule.cnf" | Select-String "install-mac"
+        Get-Content "$env:FINAL_OPENSSLDIR\fipsmodule.cnf" | Select-String "install-mac"
       shell: powershell
 
     # ==========================================
