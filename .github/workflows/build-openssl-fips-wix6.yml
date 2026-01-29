@@ -466,7 +466,7 @@ jobs:
         "@ | Out-File -FilePath $manifestPath -Append -Encoding utf8
         }
         
-        Write-Host "✅ Build artifact hashes recorded" -ForegroundColor Green
+        Write-Host "Build artifact hashes recorded" -ForegroundColor Green
       shell: powershell
 
     - name: Prepare artifacts for packaging
@@ -481,31 +481,31 @@ jobs:
         # Copy openssl.exe from install directory to staging directory
         if (Test-Path "$env:FINAL_OPENSSLDIR\bin\openssl.exe") {
           Copy-Item "$env:FINAL_OPENSSLDIR\openssl.exe" -Destination "$env:STAGING_DIR\" -Force
-          Write-Host "✓ Copied openssl.exe to staging root" -ForegroundColor Green
+          Write-Host "Copied openssl.exe to staging root" -ForegroundColor Green
         }
         
         # Copy fips.dll from install directory to staging directory
         if (Test-Path "$env:FINAL_OPENSSLDIR\lib\ossl-modules\fips.dll") {
           Copy-Item "$env:FINAL_OPENSSLDIR\lib\ossl-modules\fips.dll" -Destination "$env:STAGING_DIR\lib\ossl-modules\" -Force
-          Write-Host "✓ Copied fips.dll to staging root" -ForegroundColor Green
+          Write-Host "Copied fips.dll to staging root" -ForegroundColor Green
         }
 
         # Copy fipsmodule.cnf from install directory to staging directory
         if (Test-Path "$env:FINAL_OPENSSLDIR\fipsmodule.CNF") {
           Copy-Item "$env:FINAL_OPENSSLDIR\fipsmodule.CNF" -Destination "$env:STAGING_DIR\" -Force
-          Write-Host "✓ Copied fipsmodule.CNF to staging root" -ForegroundColor Green
+          Write-Host "Copied fipsmodule.CNF to staging root" -ForegroundColor Green
         }
 
         # Copy static config files from repo
         Copy-Item "openssl.cnf" -Destination "$env:STAGING_DIR\" -Force
-        Write-Host "✓ Added openssl.cnf" -ForegroundColor Green
+        Write-Host "Added openssl.cnf" -ForegroundColor Green
         
         Copy-Item "OpenSSL_Start.bat" -Destination "$env:STAGING_DIR\" -Force
-        Write-Host "✓ Added OpenSSL_Start.bat" -ForegroundColor Green
+        Write-Host "Added OpenSSL_Start.bat" -ForegroundColor Green
         
         # Copy verification manifest
         Copy-Item "$env:BUILD_DIR\verification\source-verification.txt" -Destination "$env:STAGING_DIR\" -Force
-        Write-Host "✓ Added source-verification.txt" -ForegroundColor Green
+        Write-Host "Added source-verification.txt" -ForegroundColor Green
         
         # Create version info file
         @"
@@ -524,7 +524,7 @@ jobs:
         VERIFICATION STATUS: All source code cryptographically verified
         See source-verification.txt for complete verification details.
         "@ | Out-File -FilePath "$env:STAGING_DIR\BUILD_INFO.txt" -Encoding utf8
-        Write-Host "✓ Created BUILD_INFO.txt" -ForegroundColor Green
+        Write-Host "Created BUILD_INFO.txt" -ForegroundColor Green
         
         Write-Host ""
         Write-Host "Staging directory contents:" -ForegroundColor Cyan
@@ -533,12 +533,14 @@ jobs:
 
     - name: Verify FIPS configuration
       run: |
-        cd "$env:STAGING_DIR"
         
         Write-Host "========================================" -ForegroundColor Cyan
         Write-Host "FIPS MODULE VERIFICATION" -ForegroundColor Cyan
         Write-Host "========================================" -ForegroundColor Cyan
         
+        # Change to OpenSSL directory
+        Push-Location "C:\Program Files\OpenSSL"
+
         Write-Host "`nOpenSSL Version:"
         .\openssl.exe version
         
@@ -547,13 +549,16 @@ jobs:
         
         Write-Host "`nFIPS Module Self-Test:"
         .\openssl.exe fipsinstall -in "fipsmodule.cnf" -module "lib\ossl-modules\fips.dll" -verify -self_test_onload
+
+        # Return to previous directory
+        Pop-Location
         
         if ($LASTEXITCODE -ne 0) {
           Write-Error "FIPS module verification failed!"
           exit 1
         }
         
-        Write-Host "`n✅ FIPS module verified successfully!" -ForegroundColor Green
+        Write-Host "`n FIPS module verified successfully!" -ForegroundColor Green
       shell: powershell
 
     - name: Create cryptographic attestation
@@ -578,11 +583,11 @@ jobs:
         
         Source Verification:
         -------------------
-        ✓ FIPS Module ($env:FIPS_VERSION): SHA256 verified against OpenSSL.org
-        ✓ OpenSSL ($env:OPENSSL_VERSION): SHA256 verified against OpenSSL.org
-        ✓ No source code modifications
-        ✓ Compiled with FIPS compliance flags
-        ✓ FIPS module self-test passed
+        FIPS Module ($env:FIPS_VERSION): SHA256 verified against OpenSSL.org
+        OpenSSL ($env:OPENSSL_VERSION): SHA256 verified against OpenSSL.org
+        No source code modifications
+        Compiled with FIPS compliance flags
+        FIPS module self-test passed
         
         Verification Evidence:
         ---------------------
@@ -608,7 +613,7 @@ jobs:
         
         "@ | Out-File -FilePath $attestationPath -Encoding utf8
         
-        Write-Host "✅ Cryptographic attestation created" -ForegroundColor Green
+        Write-Host "Cryptographic attestation created" -ForegroundColor Green
       shell: powershell
 
     - name: Upload OpenSSL artifacts
