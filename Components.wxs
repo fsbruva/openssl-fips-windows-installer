@@ -24,6 +24,27 @@
 		  <Component Id="MainExecutable" Guid="B26AA781-3B21-4A69-925E-BA716F47AD53">
 			  <File Id="EXE" Name="openssl.exe" Source="C:\build\OpenSSL_FIPS\openssl.exe" />
 		  </Component>
+		  
+		  <!-- Documentation and Verification Files -->
+		  <Component Id="BuildInfo" Guid="31D35B65-4CDA-44CC-B211-700ABBCB636B">
+			  <File Id="BuildInfoTxt" Name="BUILD_INFO.txt" Source="C:\build\OpenSSL_FIPS\BUILD_INFO.txt" />
+		  </Component>
+
+		  <Component Id="SourceVerification" Guid="6410FBA1-59D4-475E-8F84-9E3ABF03318B">
+			  <File Id="SourceVerificationTxt" Name="source-verification.txt" Source="C:\build\OpenSSL_FIPS\source-verification.txt" />
+		  </Component>
+
+		  <Component Id="CryptoAttestation" Guid="5D5AE0D2-C6F5-43EA-92BA-52BD96F8D3D8">
+			  <File Id="CryptoAttestationTxt" Name="CRYPTOGRAPHIC_ATTESTATION.txt" Source="C:\build\OpenSSL_FIPS\CRYPTOGRAPHIC_ATTESTATION.txt" />
+		  </Component>
+
+		  <Component Id="BuildProvenance" Guid="3F8D1C05-F531-4D7D-9EFA-247F62C14378">
+			  <File Id="BuildProvenanceTxt" Name="BUILD_PROVENANCE.txt" Source="C:\build\OpenSSL_FIPS\BUILD_PROVENANCE.txt" />
+		  </Component>
+
+		  <Component Id="BuildProvenanceJson" Guid="A06738E5-CB07-453D-8F29-16C2CB1C898D">
+			  <File Id="BuildProvenanceJson" Name="BUILD_PROVENANCE.json" Source="C:\build\OpenSSL_FIPS\BUILD_PROVENANCE.json" />
+		  </Component>
 	  </ComponentGroup>
 
 	  <ComponentGroup Id="ProductModules" Directory="OSSLModulesFolder">
@@ -31,27 +52,6 @@
 			  <File Id="FipsDLL" Name="fips.dll" Source="C:\build\OpenSSL_FIPS\lib\ossl-modules\fips.dll" />
 		  </Component>
 	  </ComponentGroup>
-
-	  <!-- Documentation and Verification Files -->
-	  <Component Id="BuildInfo" Guid="31D35B65-4CDA-44CC-B211-700ABBCB636B">
-		  <File Id="BuildInfoTxt" Name="BUILD_INFO.txt" Source="C:\build\OpenSSL_FIPS\BUILD_INFO.txt" />
-	  </Component>
-
-	  <Component Id="SourceVerification" Guid="6410FBA1-59D4-475E-8F84-9E3ABF03318B">
-		  <File Id="SourceVerificationTxt" Name="source-verification.txt" Source="C:\build\OpenSSL_FIPS\source-verification.txt" />
-	  </Component>
-
-	  <Component Id="CryptoAttestation" Guid="5D5AE0D2-C6F5-43EA-92BA-52BD96F8D3D8">
-		  <File Id="CryptoAttestationTxt" Name="CRYPTOGRAPHIC_ATTESTATION.txt" Source="C:\build\OpenSSL_FIPS\CRYPTOGRAPHIC_ATTESTATION.txt" />
-	  </Component>
-
-	  <Component Id="BuildProvenance" Guid="3F8D1C05-F531-4D7D-9EFA-247F62C14378">
-		  <File Id="BuildProvenanceTxt" Name="BUILD_PROVENANCE.txt" Source="C:\build\OpenSSL_FIPS\BUILD_PROVENANCE.txt" />
-	  </Component>
-
-	  <Component Id="BuildProvenanceJson" Guid="A06738E5-CB07-453D-8F29-16C2CB1C898D">
-		  <File Id="BuildProvenanceJson" Name="BUILD_PROVENANCE.json" Source="C:\build\OpenSSL_FIPS\BUILD_PROVENANCE.json" />
-	  </Component>
 
 	  <ComponentGroup Id="ProgramMenuComponents" Directory="ProgramMenuDir">
 		  <Component Id="ProgramMenuDir" Guid="61A42E38-0C12-40C6-9034-48E4348E40D6">
