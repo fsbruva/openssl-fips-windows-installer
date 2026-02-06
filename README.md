@@ -9,7 +9,7 @@ Automated Windows installer for OpenSSL 3.5.5 with FIPS 140-3 Provider Module, f
 
 ## 🎯 Features
 
-- ✅ **FIPS 140-3 Compliant** - Built with validated FIPS provider module
+- ✅ **FIPS 140-3 Compliant** - Built with validated FIPS provider module, [Certificate #4985](https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/4985)
 - ✅ **Cryptographically Verified** - All source code verified against official OpenSSL.org SHA256 hashes
 - ✅ **No Source Modifications** - Pristine sources, ensuring compliance
 - ✅ **SLSA Build Provenance** - Complete supply chain security documentation
@@ -288,7 +288,7 @@ This product includes cryptographic software written by Eric Young (eay@cryptsof
 ## 🔗 Related Projects
 
 - [OpenSSL](https://github.com/openssl/openssl) - Official OpenSSL repository
-- [OpenSSL FIPS Provider](https://www.openssl.org/docs/fips.html) - FIPS module documentation
+- [OpenSSL FIPS Provider](https://github.com/openssl/openssl/blob/master/README-FIPS.md) - FIPS module documentation
 - [WiX Toolset](https://github.com/wixtoolset/wix) - Windows installer framework
 
 ## 📞 Support
