@@ -5,7 +5,7 @@
 [![OpenSSL](https://img.shields.io/badge/OpenSSL-3.5.5-green.svg)](https://www.openssl.org/)
 [![FIPS](https://img.shields.io/badge/FIPS-140--3-red.svg)](https://csrc.nist.gov/pubs/fips/140-3/final)
 
-Automated Windows installer for OpenSSL 3.5.5 with FIPS 140-3 Provider Module, featuring cryptographic source verification, SLSA Build Provenance, and professional MSI packaging.
+Automated Windows installer for OpenSSL with FIPS 140-3 Provider Module, featuring cryptographic source verification, SLSA Build Provenance, and professional MSI packaging.
 
 ## 🎯 Features
 
@@ -60,13 +60,13 @@ C:\Program Files\OpenSSL\
 
 2. **Verify the installer** (recommended):
    ```powershell
-   gh attestation verify OpenSSL-FIPS-3.5.5.msi --repo fsbruva/openssl-fips-windows-installer
+   gh attestation verify OpenSSL-FIPS-3.X.Y.msi --repo fsbruva/openssl-fips-windows-installer
    ```
 
 3. **Install:**
    ```powershell
    # Run as Administrator
-   msiexec /i OpenSSL-FIPS-3.5.5.msi
+   msiexec /i OpenSSL-FIPS-3.X.Y.msi
    
    # Or double-click the MSI file
    ```
@@ -92,13 +92,12 @@ type "C:\Program Files\OpenSSL\BUILD_PROVENANCE.txt"
 
 ### Cryptographic Source Verification
 
-All source code is downloaded from official OpenSSL.org and verified against published SHA256 hashes:
-
-- **OpenSSL 3.5.5**: `b28c91532a8b65a1f983b4c28b7488174e4a01008e29ce8e69bd789f28bc2a89`
-- **FIPS Module 3.1.2**: `a0ce69b8b97ea6a35b96875235aa453b966ba3cba8af2de23657d8b6767d6539`
+All source code is downloaded from official OpenSSL.org and verified against published SHA256 hashes, as 
+documented in the CRYPTOGRAPHIC_ATTESTATION.txt file.
 
 ### FIPS 140-3 Compliance
 
+Conforms to [OpenSSL FIPS Security Policy](https://csrc.nist.gov/CSRC/media/projects/cryptographic-module-validation-program/documents/security-policies/140sp4985.pdf)
 - FIPS provider module built from certified source
 - Self-test verification on module load
 - HMAC integrity checking
