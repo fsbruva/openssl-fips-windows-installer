@@ -26,18 +26,21 @@ After installation (default: `C:\Program Files\OpenSSL\`):
 ```
 C:\Program Files\OpenSSL\
 ├── openssl.exe                      # OpenSSL command-line tool
-├── lib\
-│   └── ossl-modules\
-│       └── fips.dll                 # FIPS provider module
 ├── openssl.cnf                      # OpenSSL configuration
 ├── fipsmodule.cnf                   # FIPS module configuration (with HMAC)
 ├── OpenSSL_Start.bat                # Wrapper script for FIPS verification
 │
-├── BUILD_INFO.txt                   # Build metadata
+├── lib\
+│   └── ossl-modules\
+│       └── fips.dll                 # FIPS provider module
+│
+├── BUILD_INFO.txt                   # Build metadata and version information
 ├── source-verification.txt          # Source code hash verification log
 ├── CRYPTOGRAPHIC_ATTESTATION.txt    # FIPS compliance attestation
+├── BUILD_PROVENANCE.txt             # SLSA build provenance (human-readable)
+├── BUILD_PROVENANCE.json            # SLSA build provenance (machine-readable)
 ├── OPENSSL_LICENSE.txt              # OpenSSL Apache 2.0 license
-└── THIRD_PARTY_NOTICES.txt          # Third-party attributions
+└── THIRD_PARTY_NOTICES.txt          # Third-party software attributions
 ```
 
 ### Start Menu Shortcuts
@@ -82,6 +85,7 @@ openssl.exe list -providers
 
 # View build provenance
 type "C:\Program Files\OpenSSL\CRYPTOGRAPHIC_ATTESTATION.txt"
+type "C:\Program Files\OpenSSL\BUILD_PROVENANCE.txt"
 ```
 
 ## 🔐 Security & Compliance
@@ -163,6 +167,8 @@ graph TD
 - **BUILD_INFO.txt** - Build metadata and version information
 - **source-verification.txt** - Complete source code verification log
 - **CRYPTOGRAPHIC_ATTESTATION.txt** - FIPS compliance attestation
+- **BUILD_PROVENANCE.txt** - SLSA build provenance (human-readable)
+- **BUILD_PROVENANCE.json** - SLSA build provenance (machine-readable)
 - **OPENSSL_LICENSE.txt** - OpenSSL Apache 2.0 license
 - **THIRD_PARTY_NOTICES.txt** - Third-party software attributions
 
@@ -268,7 +274,7 @@ This product includes cryptographic software written by Eric Young (eay@cryptsof
 **Matthew Kempe** ([@fsbruva](https://github.com/fsbruva))
 
 - GitHub: https://github.com/fsbruva
-- Repository: https://github.com/fsbruva/openss-fips-windows-installer
+- Repository: https://github.com/fsbruva/openssl-fips-windows-installer
 
 ## 🌟 Acknowledgments
 
@@ -295,10 +301,9 @@ This product includes cryptographic software written by Eric Young (eay@cryptsof
 
 For support and questions:
 
+- 📖 Check the [documentation](#-documentation)
 - 🐛 Open an [issue](https://github.com/fsbruva/openssl-fips-windows-installer/issues)
 
 ---
 
 **Built for secure Windows deployments**
-
-![OpenSSL Logo](https://www.openssl.org/img/openssl-logo.png)
