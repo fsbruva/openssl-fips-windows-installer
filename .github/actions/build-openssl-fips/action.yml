@@ -1,7 +1,7 @@
 # Copyright (c) 2026 Matthew Kempe (@fsbruva)
 # SPDX-License-Identifier: Apache-2.0
 #
-# Repository: https://github.com/fsbruva/Openssl_FIPS
+# Repository: https://github.com/fsbruva/openssl-fips-windows-installer
 
 name: 'Build OpenSSL with FIPS'
 description: 'Compile FIPS module and OpenSSL from verified sources'
