@@ -459,6 +459,15 @@ jobs:
         path: ${{ env.STAGING_DIR }}
         retention-days: 30
 
+    - name: Upload SLSA Provenance
+      uses: actions/upload-artifact@v4
+      with:
+        name: slsa-build-provenance
+        path: |
+          ${{ env.STAGING_DIR }}\BUILD_PROVENANCE.txt
+          ${{ env.STAGING_DIR }}\BUILD_PROVENANCE.json
+        retention-days: 365  # Keep provenance for 1 year
+
   # ===========================================================================
   # INSTALLER JOB: Create WiX MSI Package
   # ===========================================================================
