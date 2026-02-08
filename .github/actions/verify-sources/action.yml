@@ -32,12 +32,15 @@ runs:
         
         $header = @"
         ========================================================================
-        OPENSSL FIPS BUILD - SOURCE CODE VERIFICATION
+        OPENSSL FIPS BUILD - TECHNICAL VERIFICATION LOG
         ========================================================================
         
         This document provides cryptographic verification that all OpenSSL source
         code was downloaded from official OpenSSL.org sources and has not been
         modified or tampered with.
+        
+        NOTE: This is a detailed technical verification log.
+        For a compliance-focused summary, see CRYPTOGRAPHIC_ATTESTATION.txt
         
         Verification Date: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss UTC")
         Verification Method: SHA256 Cryptographic Hash

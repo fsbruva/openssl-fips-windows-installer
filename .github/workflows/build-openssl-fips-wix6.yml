@@ -179,21 +179,6 @@ jobs:
         Copy-Item "$env:BUILD_DIR\verification\source-verification.txt" -Destination "$env:STAGING_DIR\" -Force
         Write-Host "Added source-verification.txt" -ForegroundColor Green
         
-        # Create BUILD_INFO.txt
-        @"
-        OpenSSL Version: $env:OPENSSL_VERSION
-        FIPS Module Version: $env:FIPS_VERSION
-        Build Date: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss UTC")
-        Build ID: ${{ github.run_number }}
-        Commit: ${{ github.sha }}
-        WiX Version: ${{ steps.setup-tools.outputs.wix-version }}
-        
-        Installation Path: $env:FINAL_PREFIX
-        
-        VERIFICATION STATUS: All source code cryptographically verified
-        See source-verification.txt for complete verification details.
-        "@ | Out-File -FilePath "$env:STAGING_DIR\BUILD_INFO.txt" -Encoding utf8
-        Write-Host "Created BUILD_INFO.txt" -ForegroundColor Green
       shell: powershell
 
     - name: Add License Files
@@ -248,11 +233,14 @@ jobs:
       run: |
         @"
         ========================================================================
-        CRYPTOGRAPHIC ATTESTATION
+        FIPS 140-3 COMPLIANCE ATTESTATION
         ========================================================================
         
-        This document attests that the OpenSSL FIPS build was created using
-        cryptographically verified source code from OpenSSL.org.
+        ATTESTATION STATEMENT
+
+        This document attests that the OpenSSL FIPS build distributed in this
+        package conforms to the OpenSSL FIPS Provider Security Policy, in order
+        to enjoy FIPS 140-3 compliance from NIST CMVP Certificate #4985.
         
         Build Information:
         ------------------
@@ -277,8 +265,13 @@ jobs:
         Configuration: Release
         Flags: enable-fips, no-shared, no-legacy, -DPEDANTIC
         
-        This build complies with NIST FIPS 140-3 requirements.
         ========================================================================
+        DETAILED VERIFICATION
+
+        For detailed technical verification logs, including complete SHA256 hash
+        verifications and binary artifact hashes, see:
+        - source-verification.txt (source code verification)
+        - BUILD_PROVENANCE.txt (build process details)
         "@ | Out-File -FilePath "$env:STAGING_DIR\CRYPTOGRAPHIC_ATTESTATION.txt" -Encoding utf8
         
         Write-Host "Cryptographic attestation created" -ForegroundColor Green
