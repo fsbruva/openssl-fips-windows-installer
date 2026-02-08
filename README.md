@@ -34,9 +34,8 @@ C:\Program Files\OpenSSL\
 │   └── ossl-modules\
 │       └── fips.dll                 # FIPS provider module
 │
-├── BUILD_INFO.txt                   # Build metadata and version information
-├── source-verification.txt          # Source code hash verification log
-├── CRYPTOGRAPHIC_ATTESTATION.txt    # FIPS compliance attestation
+├── source-verification.txt          # Techincal source code hash verification log
+├── CRYPTOGRAPHIC_ATTESTATION.txt    # FIPS 140-3 compliance attestation
 ├── BUILD_PROVENANCE.txt             # SLSA build provenance (human-readable)
 ├── BUILD_PROVENANCE.json            # SLSA build provenance (machine-readable)
 ├── OPENSSL_LICENSE.txt              # OpenSSL Apache 2.0 license
@@ -93,7 +92,7 @@ type "C:\Program Files\OpenSSL\BUILD_PROVENANCE.txt"
 ### Cryptographic Source Verification
 
 All source code is downloaded from official OpenSSL.org and verified against published SHA256 hashes, as 
-documented in the CRYPTOGRAPHIC_ATTESTATION.txt file.
+documented in the source-verification.txt file.
 
 ### FIPS 140-3 Compliance
 
@@ -163,11 +162,11 @@ graph TD
 
 ### Included Documentation
 
-- **BUILD_INFO.txt** - Build metadata and version information
 - **source-verification.txt** - Complete source code verification log
-- **CRYPTOGRAPHIC_ATTESTATION.txt** - FIPS compliance attestation
+- **CRYPTOGRAPHIC_ATTESTATION.txt** - FIPS 140-3 compliance attestation
 - **BUILD_PROVENANCE.txt** - SLSA build provenance (human-readable)
 - **BUILD_PROVENANCE.json** - SLSA build provenance (machine-readable)
+- **LICENSE.txt** - Installer Apache 2.0 license
 - **OPENSSL_LICENSE.txt** - OpenSSL Apache 2.0 license
 - **THIRD_PARTY_NOTICES.txt** - Third-party software attributions
 
