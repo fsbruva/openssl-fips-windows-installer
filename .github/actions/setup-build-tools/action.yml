@@ -64,7 +64,8 @@ runs:
         Write-Host "`nWiX: ${{ steps.wix.outputs.version }}"
    
         $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-        $vsVersion = & $vswhere -latest -property displayName
-        echo "vs-version=$vsVersion" >> $env:GITHUB_OUTPUT
+        $vsVersionName = & $vswhere -latest -property displayName
+        $vsVersionNum = & $vswhere -latest -property catalog_productSemanticVersion
+        echo "vs-version=$vsVersionName ($vsVersionNum)" >> $env:GITHUB_OUTPUT
         Write-Host "`nVisual Studio: $vsVersion"
       shell: powershell
