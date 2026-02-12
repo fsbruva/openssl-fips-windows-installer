@@ -62,7 +62,7 @@ C:\Program Files\OpenSSL\
    gh release download --repo fsbruva/openssl-fips-windows-installer --pattern "*.msi"
    ```
 
-[!Security Notice]
+[!NOTE]
 Windows may show a SmartScreen warning for new software. 
 
 2. **Verify the installer** (recommended):
