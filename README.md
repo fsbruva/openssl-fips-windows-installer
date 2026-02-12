@@ -159,6 +159,7 @@ git tag -a v3.5.5-1 -m "OpenSSL 3.5.5 FIPS Installer"
 git push origin v3.5.5-1
 # Automatically creates GitHub Release
 ```
+**Build time:** Approximately 50-60 minutes
 
 #### 4. Download the MSI
 
@@ -167,8 +168,6 @@ git push origin v3.5.5-1
 
 **From releases (tags only):**
 - Releases section → Your tag → Download MSI from assets
-
-**Build time:** Approximately 50-60 minutes
 
 ### Customization
 
