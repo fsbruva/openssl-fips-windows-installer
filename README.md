@@ -62,9 +62,6 @@ C:\Program Files\OpenSSL\
    gh release download --repo fsbruva/openssl-fips-windows-installer --pattern "*.msi"
    ```
 
-> [!Security Notice]
-> Windows may show a SmartScreen warning for new software. 
-
 2. **Verify the installer** (recommended):
    ```powershell
    gh attestation verify OpenSSL-FIPS-3.X.Y.msi --repo fsbruva/openssl-fips-windows-installer
@@ -73,6 +70,9 @@ C:\Program Files\OpenSSL\
     The installer is cryptographically signed via Sigstore.
 
 3. **Install:**
+> [!NOTE]
+> Windows may show a SmartScreen warning for new software. 
+
    ```powershell
    # Run as Administrator
    msiexec /i OpenSSL-FIPS-3.X.Y.msi
