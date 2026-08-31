@@ -175,14 +175,14 @@ See previous section for installation guidance.
 To change OpenSSL version, edit `.github/workflows/build-openssl-fips-wix6.yml`:
 ```yaml
 env:
-  OPENSSL_VERSION: '3.5.6'        # Update version
+  OPENSSL_VERSION: '3.5.5'        # Update version
   OPENSSL_SHA256: "hash_here"     # Get from openssl.org/source
 ```
 
 To change OpenSSL FIPS Provider version, edit `.github/workflows/build-openssl-fips-wix6.yml`:
 ```yaml
 env:
-  FIPS_VERSION: '3.0.9'        # Update version
+  FIPS_VERSION: '3.1.2'        # Update version
   FIPS_SHA256: "hash_here"     # Get from openssl.org/source
 ```
 
@@ -314,9 +314,9 @@ See [LICENSE.txt](LICENSE.txt) for details.
 
 ### OpenSSL
 
-This installer distributes OpenSSL 3.5.5 and the FIPS Provider Module 3.1.2, both licensed under Apache License 2.0.
+This installer distributes OpenSSL 3.5.x and the FIPS Provider Module 3.1.2, both licensed under Apache License 2.0.
 
-Copyright (c) 1998-2024 The OpenSSL Project
+Copyright (c) 1998-2026 The OpenSSL Project
 
 See [OPENSSL_LICENSE.txt](OPENSSL_LICENSE.txt) for the complete OpenSSL license.
 
