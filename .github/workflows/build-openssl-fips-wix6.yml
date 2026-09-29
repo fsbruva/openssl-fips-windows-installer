@@ -568,3 +568,27 @@ jobs:
           - Visual Studio: ${{ needs.verify-and-build-openssl-fips.outputs.vs-version }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Update README OpenSSL Version
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        .\.github\scripts\update-readme-version.ps1 `
+          -OpenSSLVersion "${{ needs.verify-and-build-openssl-fips.outputs.openssl-version }}"
+      shell: powershell
+
+    - name: Commit README OpenSSL Version
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+        git add README.md
+
+        if (git diff --cached --quiet) {
+          Write-Host "README already contains the current OpenSSL version."
+        }
+        else {
+          git commit -m "Update README OpenSSL version to ${{ needs.verify-and-build-openssl-fips.outputs.openssl-version }}"
+          git push origin HEAD:${{ github.ref_name }}
+        }
+      shell: powershell

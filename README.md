@@ -2,7 +2,9 @@
 
 [![Build Status](https://github.com/fsbruva/openssl-fips-windows-installer/actions/workflows/build-openssl-fips-wix6.yml/badge.svg)](https://github.com/fsbruva/openssl-fips-windows-installer/actions)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE.txt)
+<!-- OPENSSL_VERSION_BADGE:START -->
 [![OpenSSL](https://img.shields.io/badge/OpenSSL-3.5.8-green.svg)](https://www.openssl.org/)
+<!-- OPENSSL_VERSION_BADGE:END -->
 [![FIPS](https://img.shields.io/badge/FIPS-140--3-green.svg)](https://csrc.nist.gov/pubs/fips/140-3/final)
 
 Automated Windows installer for OpenSSL with FIPS 140-3 Provider Module, featuring cryptographic source verification, SLSA Build Provenance, and professional MSI packaging.

@@ -1,7 +1,10 @@
 ﻿<Project Sdk="WixToolset.Sdk/6.0.0">
-	<PropertyGroup>
-		<OutputType>Package</OutputType>
-		<Deterministic>true</Deterministic>
-		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
-	</PropertyGroup>
+  <PropertyGroup>
+    <OutputType>Package</OutputType>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include=".github\scripts\update-readme-version.ps1" />
+  </ItemGroup>
 </Project>
