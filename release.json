@@ -1,0 +1,6 @@
+{
+  "openssl_version": "3.5.9",
+  "openssl_sha256": "603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a",
+  "fips_version": "3.1.2",
+  "fips_sha256": "a0ce69b8b97ea6a35b96875235aa453b966ba3cba8af2de23657d8b6767d6539"
+}

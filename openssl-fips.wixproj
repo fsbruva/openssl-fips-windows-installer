@@ -5,6 +5,7 @@
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
   </PropertyGroup>
   <ItemGroup>
-    <None Include=".github\scripts\update-readme-version.ps1" />
+    <None Include=".github\scripts\validate-release-tag.ps1" />
+    <None Include="release.json" />
   </ItemGroup>
 </Project>

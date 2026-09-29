@@ -15,35 +15,23 @@ on:
   workflow_dispatch:
     inputs:
       openssl_version:
-        description: 'OpenSSL version to build'
+        description: 'OpenSSL version to build (leave blank to use release.json)'
         type: string
         required: false
-        default: '3.5.9'
       openssl_hash:
-        description: 'OpenSSL source tarball SHA256 hash'
+        description: 'OpenSSL source tarball SHA256 hash (leave blank to use release.json)'
         type: string
         required: false
-        default: '603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a'
       fips_version:
-        description: 'OpenSSL FIPS module version'
+        description: 'OpenSSL FIPS module version (leave blank to use release.json)'
         type: string
         required: false
-        default: '3.1.2'
       fips_hash:
-        description: 'OpenSSL FIPS source tarball SHA256 hash'
+        description: 'OpenSSL FIPS source tarball SHA256 hash (leave blank to use release.json)'
         type: string
         required: false
-        default: 'a0ce69b8b97ea6a35b96875235aa453b966ba3cba8af2de23657d8b6767d6539'
 
 env:
-  # Version Configuration
-  OPENSSL_VERSION: ${{ github.event.inputs.openssl_version || '3.5.9' }}
-  FIPS_VERSION: ${{ github.event.inputs.fips_version || '3.1.2' }}
-  
-  # Official OpenSSL SHA256 hashes from https://www.openssl.org/source/
-  OPENSSL_SHA256: ${{ github.event.inputs.openssl_hash || '603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a' }}
-  FIPS_SHA256: ${{ github.event.inputs.fips_hash || 'a0ce69b8b97ea6a35b96875235aa453b966ba3cba8af2de23657d8b6767d6539' }}
-
   # Directory Configuration
   BUILD_DIR: C:\build\src
   STAGING_DIR: C:\build\staging
@@ -58,7 +46,8 @@ jobs:
     runs-on: windows-latest
     
     outputs:
-      openssl-version: ${{ env.OPENSSL_VERSION }}
+      openssl-version: ${{ steps.release-metadata.outputs.openssl-version }}
+      fips-version: ${{ steps.release-metadata.outputs.fips-version }}
       wix-version: ${{ steps.setup-tools.outputs.wix-version }}
       dotnet-version: ${{ steps.setup-tools.outputs.dotnet-version }}
       vs-version: ${{ steps.setup-tools.outputs.vs-version }}
@@ -69,6 +58,61 @@ jobs:
     # -------------------------------------------------------------------------
     - name: Checkout repository
       uses: actions/checkout@v6
+
+    - name: Load release metadata
+      id: release-metadata
+      env:
+        INPUT_OPENSSL_VERSION: ${{ inputs.openssl_version }}
+        INPUT_OPENSSL_SHA256: ${{ inputs.openssl_hash }}
+        INPUT_FIPS_VERSION: ${{ inputs.fips_version }}
+        INPUT_FIPS_SHA256: ${{ inputs.fips_hash }}
+      run: |
+        $metadata = Get-Content -Raw -Path "release.json" | ConvertFrom-Json
+
+        $opensslVersion = $env:INPUT_OPENSSL_VERSION
+        $opensslHash = $env:INPUT_OPENSSL_SHA256
+        $fipsVersion = $env:INPUT_FIPS_VERSION
+        $fipsHash = $env:INPUT_FIPS_SHA256
+
+        if ([string]::IsNullOrWhiteSpace($opensslVersion)) {
+          $opensslVersion = $metadata.openssl_version
+        }
+
+        if ([string]::IsNullOrWhiteSpace($opensslHash)) {
+          $opensslHash = $metadata.openssl_sha256
+        }
+
+        if ([string]::IsNullOrWhiteSpace($fipsVersion)) {
+          $fipsVersion = $metadata.fips_version
+        }
+
+        if ([string]::IsNullOrWhiteSpace($fipsHash)) {
+          $fipsHash = $metadata.fips_sha256
+        }
+
+        "OPENSSL_VERSION=$opensslVersion" >> $env:GITHUB_ENV
+        "OPENSSL_SHA256=$opensslHash" >> $env:GITHUB_ENV
+        "FIPS_VERSION=$fipsVersion" >> $env:GITHUB_ENV
+        "FIPS_SHA256=$fipsHash" >> $env:GITHUB_ENV
+
+        "openssl-version=$opensslVersion" >> $env:GITHUB_OUTPUT
+        "openssl-sha256=$opensslHash" >> $env:GITHUB_OUTPUT
+        "fips-version=$fipsVersion" >> $env:GITHUB_OUTPUT
+        "fips-sha256=$fipsHash" >> $env:GITHUB_OUTPUT
+
+        Write-Host "OpenSSL version: $opensslVersion"
+        Write-Host "FIPS version:    $fipsVersion"
+      shell: powershell
+
+    - name: Validate release tag
+      if: startsWith(github.ref, 'refs/tags/')
+      env:
+        OPENSSL_VERSION: ${{ steps.release-metadata.outputs.openssl-version }}
+      run: |
+        .\.github\scripts\validate-release-tag.ps1 `
+          -TagName "${{ github.ref_name }}" `
+          -OpenSSLVersion "$env:OPENSSL_VERSION"
+      shell: powershell
 
     - name: Setup Build Tools
       id: setup-tools
@@ -535,6 +579,7 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v3
       with:
+        name: OpenSSL ${{ needs.verify-and-build-openssl-fips.outputs.openssl-version }}
         files: OpenSSL-FIPS-*.msi
         draft: false
         prerelease: false
@@ -543,7 +588,7 @@ jobs:
           ## OpenSSL FIPS Build - Cryptographically Verified
           
           **OpenSSL Version:** ${{ needs.verify-and-build-openssl-fips.outputs.openssl-version }}
-          **FIPS Module Version:** ${{ env.FIPS_VERSION }}
+          **FIPS Module Version:** ${{ needs.verify-and-build-openssl-fips.outputs.fips-version }}
           **Build Date:** ${{ github.event.head_commit.timestamp }}
           
           ### 🔐 Cryptographic Verification
@@ -568,27 +613,3 @@ jobs:
           - Visual Studio: ${{ needs.verify-and-build-openssl-fips.outputs.vs-version }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Update README OpenSSL Version
-      if: startsWith(github.ref, 'refs/tags/')
-      run: |
-        .\.github\scripts\update-readme-version.ps1 `
-          -OpenSSLVersion "${{ needs.verify-and-build-openssl-fips.outputs.openssl-version }}"
-      shell: powershell
-
-    - name: Commit README OpenSSL Version
-      if: startsWith(github.ref, 'refs/tags/')
-      run: |
-        git config user.name "github-actions[bot]"
-        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-        git add README.md
-
-        if (git diff --cached --quiet) {
-          Write-Host "README already contains the current OpenSSL version."
-        }
-        else {
-          git commit -m "Update README OpenSSL version to ${{ needs.verify-and-build-openssl-fips.outputs.openssl-version }}"
-          git push origin HEAD:${{ github.ref_name }}
-        }
-      shell: powershell
