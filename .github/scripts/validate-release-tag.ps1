@@ -30,3 +30,5 @@ Write-Host "Release tag validated:" -ForegroundColor Green
 Write-Host "  Tag:            $TagName"
 Write-Host "  OpenSSL:        $OpenSSLVersion"
 Write-Host "  Release:        $($Matches.revision)"
+
+"revision=$revision" >> $env:GITHUB_OUTPUT

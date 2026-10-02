@@ -48,6 +48,7 @@ jobs:
     outputs:
       openssl-version: ${{ steps.release-metadata.outputs.openssl-version }}
       fips-version: ${{ steps.release-metadata.outputs.fips-version }}
+      installer-revision: ${{ steps.validate-release-tag.outputs.revision }}
       wix-version: ${{ steps.setup-tools.outputs.wix-version }}
       dotnet-version: ${{ steps.setup-tools.outputs.dotnet-version }}
       vs-version: ${{ steps.setup-tools.outputs.vs-version }}
@@ -105,6 +106,7 @@ jobs:
       shell: powershell
 
     - name: Validate release tag
+      id: validate-release-tag
       if: startsWith(github.ref, 'refs/tags/')
       env:
         OPENSSL_VERSION: ${{ steps.release-metadata.outputs.openssl-version }}
@@ -589,6 +591,7 @@ jobs:
           
           **OpenSSL Version:** ${{ needs.verify-and-build-openssl-fips.outputs.openssl-version }}
           **FIPS Module Version:** ${{ needs.verify-and-build-openssl-fips.outputs.fips-version }}
+          **Windows Installer Release:** ${{ needs.verify-and-build-openssl-fips.outputs.installer-revision }}
           **Build Date:** ${{ github.event.head_commit.timestamp }}
           
           ### 🔐 Cryptographic Verification
