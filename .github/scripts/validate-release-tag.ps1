@@ -13,6 +13,7 @@ if ($TagName -notmatch '^v(?<version>\d+\.\d+\.\d+)-(?<revision>\d+)$') {
 }
 
 $tagVersion = $Matches.version
+$revision = $Matches.revision
 
 if ($tagVersion -ne $OpenSSLVersion) {
     throw @"
@@ -29,6 +30,6 @@ Update release.json before creating this release tag.
 Write-Host "Release tag validated:" -ForegroundColor Green
 Write-Host "  Tag:            $TagName"
 Write-Host "  OpenSSL:        $OpenSSLVersion"
-Write-Host "  Release:        $($Matches.revision)"
+Write-Host "  Release:        $revision"
 
 "revision=$revision" >> $env:GITHUB_OUTPUT
